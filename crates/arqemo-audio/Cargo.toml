@@ -1,0 +1,11 @@
+[package]
+name = "arqemo-audio"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+
+[lints]
+workspace = true
