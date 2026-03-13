@@ -2,6 +2,8 @@ pub mod cache;
 pub mod schema;
 pub mod template;
 pub mod validate;
+mod file_validation;
+
 
 use anyhow::Result;
 

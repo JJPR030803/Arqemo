@@ -1,5 +1,5 @@
 //! Theme schema types. Deserialized directly from theme.toml via serde.
-//! Type validation happens here (serde). Semantic validation is in validate.rs.
+//! Type validation happens here (serde). Semantic validation is in errors.rs.
 
 use std::collections::HashMap;
 

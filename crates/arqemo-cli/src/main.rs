@@ -24,7 +24,7 @@ enum Commands {
     },
     /// Validate a theme file without applying it
     Validate {
-        /// Theme name to validate
+        /// Theme name to errors
         theme: String,
     },
     /// List all available themes
