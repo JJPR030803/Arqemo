@@ -3,11 +3,30 @@ use crate::validate::errors::{FileError, ValidationError};
 use std::path::Path;
 
 /// Validate that a path points to a readable, parseable theme.toml
-/// and return the parsed config.
+/// and return the parsed [`ThemeConfig`].
+///
+/// Runs checks in order: exists → is file → `.toml` extension → not empty → parses.
+/// Stops at the first failure. On success, returns the deserialized config.
+///
+/// This is phase 1 of validation. Follow with
+/// [`validate_semantic()`](super::semantic::validate_semantic) for phase 2.
 ///
 /// # Errors
 ///
-/// Returns a `ValidationError::File` variant describing what went wrong.
+/// Returns a [`ValidationError::File`](super::errors::ValidationError::File)
+/// variant describing what went wrong. See [`FileError`](super::errors::FileError)
+/// for the full list of variants.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use std::path::Path;
+/// use arqemo_core::validate::file::validate_file;
+///
+/// let config = validate_file(Path::new("themes/brutalist/theme.toml"))?;
+/// println!("theme name: {}", config.meta.name);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn validate_file(path: &Path) -> Result<ThemeConfig, ValidationError> {
     validate_file_exists(path)?;
     validate_is_file(path)?;

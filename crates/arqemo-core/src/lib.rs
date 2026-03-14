@@ -1,4 +1,5 @@
 pub mod cache;
+pub mod config;
 pub mod schema;
 pub mod template;
 pub mod validate;

@@ -1,8 +1,8 @@
-use std::path;
-use arqemo_core::validate::semantic::validate_semantic;
-use arqemo_core::validate::file::validate_file;
-use path::Path;
 use arqemo_core::schema::ThemeConfig;
+use arqemo_core::validate::file::validate_file;
+use arqemo_core::validate::semantic::validate_semantic;
+use path::Path;
+use std::path;
 
 #[test]
 fn test_semantic_validation() {

@@ -6,11 +6,33 @@
 use crate::schema::ThemeConfig;
 use crate::validate::errors::{SemanticError, ValidationError};
 
-/// Validate semantic rules on a parsed theme config.
+/// Validate semantic rules on a parsed [`ThemeConfig`].
+///
+/// Runs three groups of checks in order:
+/// 1. **Wallpaper mode** — required/forbidden keys per mode (see `.claude/schema.md`)
+/// 2. **Empty strings** — required fields must not be `""`
+/// 3. **Color format** — all 23 color fields must match `#RRGGBB`
+///
+/// This is phase 2 of validation. Call after
+/// [`validate_file()`](super::file::validate_file) has produced a `ThemeConfig`.
 ///
 /// # Errors
 ///
-/// Returns a `ValidationError::Semantic` variant describing what went wrong.
+/// Returns a [`ValidationError::Semantic`](super::errors::ValidationError::Semantic)
+/// variant. See [`SemanticError`](super::errors::SemanticError) for the full list.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use std::path::Path;
+/// use arqemo_core::validate::file::validate_file;
+/// use arqemo_core::validate::semantic::validate_semantic;
+///
+/// let config = validate_file(Path::new("themes/brutalist/theme.toml"))?;
+/// validate_semantic(&config)?;
+/// // config is now fully validated
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 pub fn validate_semantic(config: &ThemeConfig) -> Result<(), ValidationError> {
     validate_wallpaper(config)?;
     validate_no_empty_strings(config)?;
