@@ -2,8 +2,6 @@ pub mod cache;
 pub mod schema;
 pub mod template;
 pub mod validate;
-mod file_validation;
-
 
 use anyhow::Result;
 
@@ -23,10 +21,10 @@ pub async fn apply(theme: &str, dry_run: bool) -> Result<()> {
 /// # Errors
 ///
 /// Returns an error if the theme is invalid.
-pub fn validate(theme: &str) -> Result<()> {
-    let _ = theme;
-    todo!("validate command — Phase 1")
-}
+//pub fn validate(theme: &str) -> Result<()> {
+//  let _ = theme;
+//  todo!("validate command — Phase 1 and expose api to other crates")
+//}
 
 /// List all available themes.
 ///

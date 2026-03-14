@@ -3,7 +3,6 @@
 //! that serde cannot express: mode-conditional wallpaper keys,
 //! renderer requirement, missing color keys, path existence.
 
-use crate::schema::ThemeConfig;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -11,17 +10,13 @@ pub enum ValidationError {
     #[error(transparent)]
     File(#[from] FileError),
 
-
     #[error(transparent)]
     Semantic(#[from] SemanticError),
-
 }
 
 #[derive(Error, Debug)]
-pub enum FileError{
-
+pub enum FileError {
     // Path related errors
-
     /// When path dont exists uses `std::path::PathBuf`.
     #[error("Path does not exist: {0}")]
     PathDoesNotExist(std::path::PathBuf),
@@ -44,15 +39,37 @@ pub enum FileError{
     #[error("failed to read file: {0}")]
     ReadFileError(std::io::Error),
 
-
     // Parsing errors
     #[error("failed to parse file: {0}")]
-   ParseError(#[from] toml::de::Error),
-
+    ParseError(#[from] toml::de::Error),
 }
 
 #[derive(Error, Debug)]
-pub enum SemanticError{
-    #[error("invalid theme config: {0}")]
-    InvalidThemeConfig(String),
+pub enum SemanticError {
+    // Wallpaper mode rules
+    #[error("[wallpaper] mode = \"renderer\" requires a [renderer] section")]
+    MissingRendererSection,
+
+    #[error("[wallpaper] mode = \"image\" requires a path key")]
+    MissingWallpaperPath,
+
+    #[error("[wallpaper] mode = \"solid\" requires a color key")]
+    MissingWallpaperColor,
+
+    #[error("[wallpaper] mode = \"glsl\" requires a shader key")]
+    MissingWallpaperShader,
+
+    #[error("[wallpaper] forbidden key for mode \"{mode}\": {key}")]
+    ForbiddenWallpaperKey { mode: String, key: String },
+
+    #[error("unknown wallpaper mode: {0}")]
+    UnknownWallpaperMode(String),
+
+    // Empty string checks
+    #[error("required field is empty: {section}.{field}")]
+    EmptyField { section: String, field: String },
+
+    // Color format
+    #[error("invalid color format for {field}: \"{value}\" (expected #RRGGBB)")]
+    InvalidColorFormat { field: String, value: String },
 }

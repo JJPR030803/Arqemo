@@ -11,7 +11,7 @@ pub struct ThemeConfig {
     pub typography: Typography,
     pub colors: Colors,
     pub hyprland: Hyprland,
-    pub workspaces: Option<HashMap<u8, WorkspaceConfig>>,
+    pub workspaces: Option<HashMap<String, WorkspaceConfig>>,
     pub wallpaper: Wallpaper,
     pub renderer: Option<Renderer>,
     pub widgets: Option<Widgets>,

@@ -1,0 +1,56 @@
+[meta]
+name        = "test"
+version     = "0.1"
+description = "Validation test fixture."
+tags        = ["test"]
+renderer    = "none"
+widgets     = "none"
+
+[typography]
+font_mono = "Iosevka"
+font_size = 13
+
+[colors]
+bg  = "#0a0a0a"
+fg  = "#e0e0e0"
+
+black          = "#0a0a0a"
+red            = "#ff5555"
+green          = "#55ff55"
+yellow         = "#f1c40f"
+blue           = "#6699cc"
+magenta        = "#cc66ff"
+cyan           = "#66ffcc"
+white          = "#e0e0e0"
+
+bright_black   = "#333333"
+bright_red     = "#ff7777"
+bright_green   = "#77ff77"
+bright_yellow  = "#f5d84f"
+bright_blue    = "#88bbee"
+bright_magenta = "#dd88ff"
+bright_cyan    = "#88ffdd"
+bright_white   = "#ffffff"
+
+accent   = "#ffffff"
+surface0 = "#111111"
+surface1 = "#1a1a1a"
+surface2 = "#242424"
+muted    = "#555555"
+
+[hyprland]
+border_size = 1
+gaps_in     = 4
+gaps_out    = 8
+rounding    = 0
+blur        = false
+
+[hyprland.animations]
+preset = "none"
+
+[wallpaper]
+mode  = "solid"
+color = "#0a0a0a"
+
+[workspaces]
+"1" = { layout = "dwindle" }
