@@ -33,5 +33,17 @@ pub async fn apply(theme: &str, dry_run: bool) -> Result<()> {
 ///
 /// Returns an error if the themes directory cannot be read.
 pub fn list() -> Result<()> {
-    todo!("list command — Phase 6")
+
+    use crate::config::root::ConfigRoot;
+
+    let root = ConfigRoot::locate()?;
+
+    println!("{:#?}", root);
+
+    Ok(())
+}
+
+#[test]
+fn test_list() -> Result<()> {
+    list()
 }
