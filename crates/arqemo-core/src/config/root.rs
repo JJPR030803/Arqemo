@@ -40,6 +40,51 @@ pub struct ConfigRoot {
 }
 
 impl ConfigRoot {
+    /// Ensure the config root and all required subdirs exist, creating them if needed.
+    ///
+    /// Idempotent — safe to call even if the dirs already exist.
+    /// This is the entry point called by `arqemo init`.
+    ///
+    /// # Errors
+    ///
+    /// - [`ConfigError::NoConfigDir`] — XDG config dir cannot be determined
+    /// - [`ConfigError::NoCacheDir`]  — XDG cache dir cannot be determined
+    /// - [`ConfigError::CreateFailed`] — a directory could not be created
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use arqemo_core::config::root::ConfigRoot;
+    ///
+    /// let root = ConfigRoot::ensure()?;
+    /// assert!(root.themes_dir.exists());
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn ensure() -> Result<Self, ConfigError> {
+        let base = dirs::config_dir()
+            .ok_or(ConfigError::NoConfigDir)?
+            .join("arqemo");
+
+        let cache_dir = dirs::cache_dir()
+            .ok_or(ConfigError::NoCacheDir)?
+            .join("arqemo");
+
+        let themes_dir = base.join("themes");
+
+        for dir in [&base, &themes_dir] {
+            std::fs::create_dir_all(dir).map_err(|e| ConfigError::CreateFailed {
+                path: dir.clone(),
+                source: e,
+            })?;
+        }
+
+        Ok(ConfigRoot {
+            base,
+            themes_dir,
+            cache_dir,
+        })
+    }
+
     /// Locate the arqemo config root by resolving XDG directories.
     ///
     /// Checks that `~/.config/arqemo/` and `~/.config/arqemo/themes/` exist.

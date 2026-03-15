@@ -29,6 +29,8 @@ enum Commands {
     },
     /// List all available themes
     List,
+    /// Initialise the arqemo directory structure
+    Init,
 }
 
 #[tokio::main]
@@ -38,5 +40,6 @@ async fn main() -> Result<()> {
         Commands::Apply { theme, dry_run } => arqemo_core::apply(&theme, dry_run).await,
         Commands::Validate { theme } => arqemo_core::list(),
         Commands::List => arqemo_core::list(),
+        Commands::Init => arqemo_core::init(),
     }
 }

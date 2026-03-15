@@ -54,4 +54,11 @@ pub enum ConfigError {
         /// Sorted list of theme names that do exist.
         available: Vec<String>,
     },
+
+    /// A directory could not be created during `ensure()`.
+    #[error("failed to create config directory '{path}': {source}")]
+    CreateFailed {
+        path: PathBuf,
+        source: std::io::Error,
+    },
 }

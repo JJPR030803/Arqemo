@@ -5,6 +5,41 @@ pub mod template;
 pub mod validate;
 
 use anyhow::Result;
+use cache::CacheLayout;
+
+/// Initialise the arqemo directory structure.
+///
+/// Creates the following directories if they do not already exist:
+/// - `~/.config/arqemo/`
+/// - `~/.config/arqemo/themes/`
+/// - `~/.config/arqemo/templates/`
+/// - `~/.cache/arqemo/`
+/// - `~/.cache/arqemo/rendered/`
+/// - `~/.cache/arqemo/themes/`
+///
+/// Idempotent — safe to run multiple times.
+///
+/// # Errors
+///
+/// Returns an error if any directory cannot be created.
+pub fn init() -> Result<()> {
+    use config::root::ConfigRoot;
+
+    let config = ConfigRoot::ensure()?;
+
+    let templates = template::templates_dir()?;
+    std::fs::create_dir_all(&templates)?;
+
+    let cache_path = cache::search_cache_dir()?;
+    CacheLayout::ensure(&cache_path)?;
+
+    println!("config:    {}", config.base.display());
+    println!("themes:    {}", config.themes_dir.display());
+    println!("templates: {}", templates.display());
+    println!("cache:     {}", cache_path.display());
+
+    Ok(())
+}
 
 /// Apply a theme to the desktop.
 ///

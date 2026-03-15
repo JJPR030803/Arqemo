@@ -33,7 +33,19 @@ pub mod error;
 
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use error::CacheError;
+
+/// Returns the path to the arqemo cache directory (`~/.cache/arqemo/`).
+///
+/// # Errors
+///
+/// Returns an error if the cache directory cannot be determined.
+pub fn search_cache_dir() -> Result<PathBuf> {
+    let base =
+        dirs::cache_dir().ok_or_else(|| anyhow::anyhow!("could not determine cache directory"))?;
+    Ok(base.join("arqemo"))
+}
 
 /// Resolved paths for the arqemo cache directory.
 ///
