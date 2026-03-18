@@ -28,7 +28,10 @@ enum Commands {
         theme: String,
     },
     /// List all available themes
-    List,
+    List {
+        #[arg(long)]
+        complete_path: bool,
+    },
     /// Initialise the arqemo directory structure
     Init,
 }
@@ -38,8 +41,8 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Apply { theme, dry_run } => arqemo_core::apply(&theme, dry_run).await,
-        Commands::Validate { theme } => arqemo_core::list(),
-        Commands::List => arqemo_core::list(),
+        Commands::Validate { theme } => arqemo_core::list_themes(true),
+        Commands::List { complete_path} => arqemo_core::list_themes(complete_path),
         Commands::Init => arqemo_core::init(),
     }
 }

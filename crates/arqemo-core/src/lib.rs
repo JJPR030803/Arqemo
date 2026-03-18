@@ -67,18 +67,32 @@ pub async fn apply(theme: &str, dry_run: bool) -> Result<()> {
 /// # Errors
 ///
 /// Returns an error if the themes directory cannot be read.
-pub fn list() -> Result<()> {
+pub fn list_themes(complete:bool) -> Result<()> {
 
     use crate::config::root::ConfigRoot;
 
-    let root = ConfigRoot::locate()?;
+    let themes_root = ConfigRoot::locate()?.themes_dir;
+    let themes = std::fs::read_dir(&themes_root)?;
+    if complete{
+        for theme in themes {
+            let theme = theme?;
+            let path = theme.path();
+            println!("{}", path.display());
+        }
+         Ok(())
+    }else { 
+        for theme in themes {
+            let theme = theme?;
+            let path = theme.path();
+            println!("{}", path.file_name().unwrap().to_str().unwrap());
+        }
+        Ok(())
+    }
 
-    println!("{:#?}", root);
-
-    Ok(())
+    
 }
 
 #[test]
 fn test_list() -> Result<()> {
-    list()
+    list_themes(true)
 }
