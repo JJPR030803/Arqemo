@@ -3,8 +3,9 @@ pub mod config;
 pub mod schema;
 pub mod template;
 pub mod validate;
+pub mod apply;
 
-use std::path::Path;
+use crate::validate::{file, semantic};
 use anyhow::Result;
 use cache::CacheLayout;
 use crate::config::root::ConfigRoot;
@@ -45,13 +46,33 @@ pub fn init() -> Result<()> {
 
 /// Apply a theme to the desktop.
 ///
+/// Loads and validates the theme, then applies it via the apply pipeline:
+/// 1. Preflight checks (Hyprland running, tools available)
+/// 2. Hyprland configuration (gaps, rounding, borders)
+/// 3. Wallpaper activation
+///
 /// # Errors
 ///
-/// Returns an error if the theme cannot be applied.
+/// Returns an error if the theme cannot be loaded, validated, or applied.
 #[allow(clippy::unused_async)]
 pub async fn apply(theme: &str, dry_run: bool) -> Result<()> {
-    let _ = (theme, dry_run);
-    todo!("apply pipeline — Phase 0")
+    let theme_dir = ConfigRoot::locate()?.themes_dir.join(theme);
+    let toml_path = theme_dir.join("theme.toml");
+
+    if !toml_path.exists() {
+        anyhow::bail!("theme '{}' not found in themes directory", theme);
+    }
+
+    let config = file::validate_file(&toml_path)?;
+    semantic::validate_semantic(&config)?;
+
+    if dry_run {
+        println!("dry-run: would apply theme '{}'", theme);
+        return Ok(());
+    }
+
+    apply::apply(&config)?;
+    Ok(())
 }
 
 /// Validate a theme file without applying it.
@@ -86,7 +107,9 @@ pub fn list_themes(complete:bool) -> Result<()> {
         for theme in themes {
             let theme = theme?;
             let path = theme.path();
-            println!("{}", path.file_name().unwrap().to_str().unwrap());
+            if let Some (name) = path.file_name().and_then(|s| s.to_str()) { 
+                println!("{}", name);
+            } 
         }
         Ok(())
     }
@@ -95,39 +118,20 @@ pub fn list_themes(complete:bool) -> Result<()> {
 }
 
 pub fn validate_theme(theme: &str,info:bool) -> Result<()> {
-    let theme_paths = ConfigRoot::locate()?.themes_dir;
-    let themes = std::fs::read_dir(&theme_paths)?;
-    let mut exists = false;
+   let theme_dir = ConfigRoot::locate()?.themes_dir.join(theme);
+    let toml_theme = theme_dir.join("theme.toml");
     
-    for th in themes {
-        if theme == th?.path().file_name().unwrap().to_str().unwrap_or(
-            "IO error reading themes directory."
-        ) {
-            println!("{} is valid name", theme);
-            exists = true;
-            break;
-        } 
-    }
+    if !toml_theme.exists() { 
+        anyhow::bail!("theme '{}' not found in themes directory", theme);
+    } 
     
-    let theme_to_validate = theme_paths.join(theme).join("theme.toml");
-    if exists {
-        let theme_cfg =  match validate::file::validate_file(&theme_to_validate) { 
-            Ok(cfg) => Ok(cfg),
-            Err(e) => Err(e),
-        };
-        let semantic_errors = match validate::semantic::validate_semantic(&theme_cfg?) { 
-            Ok(()) => Ok(()),
-            Err(e) => Err(e),
-        };
-        if info { 
-            println!("{} is a valid theme", theme);
-            println!("{} is located at {}", theme, theme_to_validate.display());
-            println!("{} is semantically valid", theme);
-            println!("{} has the following errors:", theme);
-        }
-    } else { 
-        println!("{} is not a valid name", theme);
-    }
+    let cfg = validate::file::validate_file(&toml_theme)?;
+    validate::semantic::validate_semantic(&cfg)?;
+    
+    if info  { 
+        println!("{} is valid",theme);
+        println!("{}", toml_theme.display());
+    } 
     Ok(())
 }
 
