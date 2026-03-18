@@ -1,3 +1,4 @@
+use std::str::Matches;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
@@ -26,6 +27,10 @@ enum Commands {
     Validate {
         /// Theme name to errors
         theme: String,
+        
+        /// Informational only, no errors
+        #[arg(long)]
+        info: bool,
     },
     /// List all available themes
     List {
@@ -41,7 +46,17 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Apply { theme, dry_run } => arqemo_core::apply(&theme, dry_run).await,
-        Commands::Validate { theme } => arqemo_core::list_themes(true),
+        Commands::Validate { theme ,info } => {
+            match arqemo_core::validate_theme(&theme,info) { 
+                Ok(()) => {
+                    println!("{} is a valid theme", theme);
+                    Ok(())
+                },
+                Err(e) => Err(
+                    anyhow::anyhow!("{} is not a valid theme", theme)
+                )
+            }
+        }
         Commands::List { complete_path} => arqemo_core::list_themes(complete_path),
         Commands::Init => arqemo_core::init(),
     }
