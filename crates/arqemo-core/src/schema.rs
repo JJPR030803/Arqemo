@@ -91,11 +91,59 @@ pub struct WorkspaceConfig {
     pub layout: String,
 }
 
-#[derive(Deserialize, Debug)]
+/// Wallpaper display mode.
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum WallpaperMode {
+    Image,
+    Solid,
+    Glsl,
+    Renderer,
+}
+
+/// Wallpaper backend for image mode.
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum WallpaperBackend {
+    Hyprpaper,
+    Swww,
+}
+
+/// Swww transition configuration.
+#[derive(Debug, Deserialize)]
+pub struct WallpaperTransition {
+    /// Transition type: "fade", "wipe", "wave", "grow", "outer", "random".
+    #[serde(rename = "type")]
+    pub kind: String,
+    /// Duration in seconds.
+    pub duration: f32,
+    /// Frames per second.
+    pub fps: u32,
+    /// Optional bezier curve.
+    pub bezier: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Wallpaper {
-    pub mode: String,
+    pub mode: WallpaperMode,
+
+    // image mode — single file (mutually exclusive with pool)
     pub path: Option<String>,
+
+    // image mode — pool
+    pub pool: Option<String>,
+    pub default: Option<String>,
+
+    // image mode — backend (None = default to hyprpaper at apply time)
+    pub backend: Option<WallpaperBackend>,
+
+    // swww transition (only valid when backend = Some(Swww))
+    pub transition: Option<WallpaperTransition>,
+
+    // solid mode
     pub color: Option<String>,
+
+    // glsl mode
     pub shader: Option<String>,
 }
 

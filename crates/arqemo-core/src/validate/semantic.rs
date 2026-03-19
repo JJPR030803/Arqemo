@@ -3,7 +3,7 @@
 //! that serde cannot express: mode-conditional wallpaper keys,
 //! empty required strings, color hex format.
 
-use crate::schema::ThemeConfig;
+use crate::schema::{ThemeConfig, Wallpaper, WallpaperBackend, WallpaperMode};
 use crate::validate::errors::{SemanticError, ValidationError};
 
 /// Validate semantic rules on a parsed [`ThemeConfig`].
@@ -43,93 +43,104 @@ pub fn validate_semantic(config: &ThemeConfig) -> Result<(), ValidationError> {
 fn validate_wallpaper(config: &ThemeConfig) -> Result<(), ValidationError> {
     let wp = &config.wallpaper;
 
-    match wp.mode.as_str() {
-        "image" => {
-            if wp.path.is_none() {
-                return Err(SemanticError::MissingWallpaperPath.into());
-            }
-            if wp.color.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "image".into(),
-                    key: "color".into(),
-                }
-                .into());
-            }
-            if wp.shader.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "image".into(),
-                    key: "shader".into(),
-                }
-                .into());
-            }
-        }
-        "solid" => {
-            if wp.color.is_none() {
-                return Err(SemanticError::MissingWallpaperColor.into());
-            }
-            if wp.path.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "solid".into(),
-                    key: "path".into(),
-                }
-                .into());
-            }
-            if wp.shader.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "solid".into(),
-                    key: "shader".into(),
-                }
-                .into());
-            }
-        }
-        "glsl" => {
-            if wp.shader.is_none() {
-                return Err(SemanticError::MissingWallpaperShader.into());
-            }
-            if wp.path.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "glsl".into(),
-                    key: "path".into(),
-                }
-                .into());
-            }
-            if wp.color.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "glsl".into(),
-                    key: "color".into(),
-                }
-                .into());
-            }
-        }
-        "renderer" => {
-            if config.renderer.is_none() {
-                return Err(SemanticError::MissingRendererSection.into());
-            }
-            if wp.path.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "renderer".into(),
-                    key: "path".into(),
-                }
-                .into());
-            }
-            if wp.color.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "renderer".into(),
-                    key: "color".into(),
-                }
-                .into());
-            }
-            if wp.shader.is_some() {
-                return Err(SemanticError::ForbiddenWallpaperKey {
-                    mode: "renderer".into(),
-                    key: "shader".into(),
-                }
-                .into());
-            }
-        }
-        other => return Err(SemanticError::UnknownWallpaperMode(other.into()).into()),
+    match wp.mode {
+        WallpaperMode::Image => validate_wallpaper_image(wp)?,
+        WallpaperMode::Solid => validate_wallpaper_solid(wp)?,
+        WallpaperMode::Glsl => validate_wallpaper_glsl(wp)?,
+        WallpaperMode::Renderer => validate_wallpaper_renderer(wp, config)?,
     }
 
+    // Cross-mode checks
+    if wp.transition.is_some() && wp.backend != Some(WallpaperBackend::Swww) {
+        return Err(SemanticError::WallpaperTransitionRequiresSwww.into());
+    }
+
+    if wp.backend.is_some() && wp.mode != WallpaperMode::Image {
+        return Err(SemanticError::WallpaperBackendOnlyValidForImageMode.into());
+    }
+
+    Ok(())
+}
+
+fn validate_wallpaper_image(wp: &Wallpaper) -> Result<(), ValidationError> {
+    // path and pool mutually exclusive
+    if wp.path.is_some() && wp.pool.is_some() {
+        return Err(SemanticError::WallpaperPathAndPoolMutuallyExclusive.into());
+    }
+
+    // pool requires default
+    if wp.pool.is_some() && wp.default.is_none() {
+        return Err(SemanticError::WallpaperPoolRequiresDefault.into());
+    }
+
+    // default requires pool
+    if wp.default.is_some() && wp.pool.is_none() {
+        return Err(SemanticError::WallpaperDefaultRequiresPool.into());
+    }
+
+    // one of path or pool required
+    if wp.path.is_none() && wp.pool.is_none() {
+        return Err(SemanticError::WallpaperImageRequiresPathOrPool.into());
+    }
+
+    // forbidden fields
+    forbid_field(wp.color.as_ref(), "image", "color")?;
+    forbid_field(wp.shader.as_ref(), "image", "shader")?;
+
+    Ok(())
+}
+
+fn validate_wallpaper_solid(wp: &Wallpaper) -> Result<(), ValidationError> {
+    if wp.color.is_none() {
+        return Err(SemanticError::MissingWallpaperColor.into());
+    }
+
+    forbid_field(wp.path.as_ref(), "solid", "path")?;
+    forbid_field(wp.pool.as_ref(), "solid", "pool")?;
+    forbid_field(wp.default.as_ref(), "solid", "default")?;
+    forbid_field(wp.shader.as_ref(), "solid", "shader")?;
+    forbid_field(wp.transition.as_ref(), "solid", "transition")?;
+
+    Ok(())
+}
+
+fn validate_wallpaper_glsl(wp: &Wallpaper) -> Result<(), ValidationError> {
+    if wp.shader.is_none() {
+        return Err(SemanticError::MissingWallpaperShader.into());
+    }
+
+    forbid_field(wp.path.as_ref(), "glsl", "path")?;
+    forbid_field(wp.pool.as_ref(), "glsl", "pool")?;
+    forbid_field(wp.default.as_ref(), "glsl", "default")?;
+    forbid_field(wp.color.as_ref(), "glsl", "color")?;
+    forbid_field(wp.transition.as_ref(), "glsl", "transition")?;
+
+    Ok(())
+}
+
+fn validate_wallpaper_renderer(wp: &Wallpaper, config: &ThemeConfig) -> Result<(), ValidationError> {
+    if config.renderer.is_none() {
+        return Err(SemanticError::MissingRendererSection.into());
+    }
+
+    forbid_field(wp.path.as_ref(), "renderer", "path")?;
+    forbid_field(wp.pool.as_ref(), "renderer", "pool")?;
+    forbid_field(wp.default.as_ref(), "renderer", "default")?;
+    forbid_field(wp.color.as_ref(), "renderer", "color")?;
+    forbid_field(wp.shader.as_ref(), "renderer", "shader")?;
+    forbid_field(wp.transition.as_ref(), "renderer", "transition")?;
+
+    Ok(())
+}
+
+fn forbid_field<T>(field: Option<&T>, mode: &str, key: &str) -> Result<(), ValidationError> {
+    if field.is_some() {
+        return Err(SemanticError::ForbiddenWallpaperKey {
+            mode: mode.into(),
+            key: key.into(),
+        }
+        .into());
+    }
     Ok(())
 }
 
@@ -155,8 +166,7 @@ fn validate_no_empty_strings(config: &ThemeConfig) -> Result<(), ValidationError
     // typography
     check_not_empty(&config.typography.font_mono, "typography", "font_mono")?;
 
-    // wallpaper
-    check_not_empty(&config.wallpaper.mode, "wallpaper", "mode")?;
+    // wallpaper mode is now an enum, no empty check needed
 
     // colors — all 23 fields
     let c = &config.colors;
@@ -269,8 +279,12 @@ mod tests {
             },
             workspaces: None,
             wallpaper: Wallpaper {
-                mode: "solid".into(),
+                mode: WallpaperMode::Solid,
                 path: None,
+                pool: None,
+                default: None,
+                backend: None,
+                transition: None,
                 color: Some("#0a0a0a".into()),
                 shader: None,
             },
@@ -282,25 +296,26 @@ mod tests {
     // --- wallpaper mode rules ---
 
     #[test]
-    fn image_mode_missing_path_returns_error() {
+    fn image_mode_missing_path_or_pool_returns_error() {
         let mut cfg = valid_config();
-        cfg.wallpaper.mode = "image".into();
+        cfg.wallpaper.mode = WallpaperMode::Image;
         cfg.wallpaper.color = None;
         cfg.wallpaper.path = None;
+        cfg.wallpaper.pool = None;
         let err = validate_semantic(&cfg).unwrap_err();
         assert!(
             matches!(
                 err,
-                ValidationError::Semantic(SemanticError::MissingWallpaperPath)
+                ValidationError::Semantic(SemanticError::WallpaperImageRequiresPathOrPool)
             ),
-            "expected MissingWallpaperPath, got: {err:?}"
+            "expected WallpaperImageRequiresPathOrPool, got: {err:?}"
         );
     }
 
     #[test]
     fn image_mode_with_forbidden_color_returns_error() {
         let mut cfg = valid_config();
-        cfg.wallpaper.mode = "image".into();
+        cfg.wallpaper.mode = WallpaperMode::Image;
         cfg.wallpaper.path = Some("/tmp/wall.png".into());
         cfg.wallpaper.color = Some("#000000".into());
         let err = validate_semantic(&cfg).unwrap_err();
@@ -313,7 +328,7 @@ mod tests {
     #[test]
     fn image_mode_with_forbidden_shader_returns_error() {
         let mut cfg = valid_config();
-        cfg.wallpaper.mode = "image".into();
+        cfg.wallpaper.mode = WallpaperMode::Image;
         cfg.wallpaper.path = Some("/tmp/wall.png".into());
         cfg.wallpaper.color = None;
         cfg.wallpaper.shader = Some("frag.glsl".into());
@@ -327,7 +342,7 @@ mod tests {
     #[test]
     fn solid_mode_missing_color_returns_error() {
         let mut cfg = valid_config();
-        cfg.wallpaper.mode = "solid".into();
+        cfg.wallpaper.mode = WallpaperMode::Solid;
         cfg.wallpaper.color = None;
         let err = validate_semantic(&cfg).unwrap_err();
         assert!(
@@ -342,7 +357,7 @@ mod tests {
     #[test]
     fn glsl_mode_missing_shader_returns_error() {
         let mut cfg = valid_config();
-        cfg.wallpaper.mode = "glsl".into();
+        cfg.wallpaper.mode = WallpaperMode::Glsl;
         cfg.wallpaper.color = None;
         cfg.wallpaper.shader = None;
         let err = validate_semantic(&cfg).unwrap_err();
@@ -358,7 +373,7 @@ mod tests {
     #[test]
     fn renderer_mode_missing_section_returns_error() {
         let mut cfg = valid_config();
-        cfg.wallpaper.mode = "renderer".into();
+        cfg.wallpaper.mode = WallpaperMode::Renderer;
         cfg.wallpaper.color = None;
         cfg.renderer = None;
         let err = validate_semantic(&cfg).unwrap_err();
@@ -374,7 +389,7 @@ mod tests {
     #[test]
     fn renderer_mode_with_forbidden_path_returns_error() {
         let mut cfg = valid_config();
-        cfg.wallpaper.mode = "renderer".into();
+        cfg.wallpaper.mode = WallpaperMode::Renderer;
         cfg.wallpaper.color = None;
         cfg.wallpaper.path = Some("/tmp/wall.png".into());
         cfg.renderer = Some(Renderer {
@@ -387,18 +402,6 @@ mod tests {
         assert!(
             matches!(err, ValidationError::Semantic(SemanticError::ForbiddenWallpaperKey { ref mode, ref key }) if mode == "renderer" && key == "path"),
             "expected ForbiddenWallpaperKey renderer/path, got: {err:?}"
-        );
-    }
-
-    #[test]
-    fn unknown_wallpaper_mode_returns_error() {
-        let mut cfg = valid_config();
-        cfg.wallpaper.mode = "banana".into();
-        cfg.wallpaper.color = None;
-        let err = validate_semantic(&cfg).unwrap_err();
-        assert!(
-            matches!(err, ValidationError::Semantic(SemanticError::UnknownWallpaperMode(ref m)) if m == "banana"),
-            "expected UnknownWallpaperMode, got: {err:?}"
         );
     }
 
@@ -437,6 +440,151 @@ mod tests {
             matches!(err, ValidationError::Semantic(SemanticError::InvalidColorFormat { ref field, ref value }) if field == "red" && value == "not-a-color"),
             "expected InvalidColorFormat red, got: {err:?}"
         );
+    }
+
+    // --- new wallpaper validation rules ---
+
+    #[test]
+    fn image_mode_path_and_pool_conflict_returns_error() {
+        let mut cfg = valid_config();
+        cfg.wallpaper.mode = WallpaperMode::Image;
+        cfg.wallpaper.path = Some("/tmp/wall.png".into());
+        cfg.wallpaper.pool = Some("pool".into());
+        cfg.wallpaper.default = Some("default.png".into());
+        cfg.wallpaper.color = None;
+        let err = validate_semantic(&cfg).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ValidationError::Semantic(SemanticError::WallpaperPathAndPoolMutuallyExclusive)
+            ),
+            "expected WallpaperPathAndPoolMutuallyExclusive, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn image_mode_pool_without_default_returns_error() {
+        let mut cfg = valid_config();
+        cfg.wallpaper.mode = WallpaperMode::Image;
+        cfg.wallpaper.path = None;
+        cfg.wallpaper.pool = Some("pool".into());
+        cfg.wallpaper.default = None;
+        cfg.wallpaper.color = None;
+        let err = validate_semantic(&cfg).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ValidationError::Semantic(SemanticError::WallpaperPoolRequiresDefault)
+            ),
+            "expected WallpaperPoolRequiresDefault, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn image_mode_default_without_pool_returns_error() {
+        let mut cfg = valid_config();
+        cfg.wallpaper.mode = WallpaperMode::Image;
+        cfg.wallpaper.path = None;
+        cfg.wallpaper.pool = None;
+        cfg.wallpaper.default = Some("default.png".into());
+        cfg.wallpaper.color = None;
+        let err = validate_semantic(&cfg).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ValidationError::Semantic(SemanticError::WallpaperDefaultRequiresPool)
+            ),
+            "expected WallpaperDefaultRequiresPool, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn transition_without_swww_returns_error() {
+        let mut cfg = valid_config();
+        cfg.wallpaper.mode = WallpaperMode::Image;
+        cfg.wallpaper.path = Some("/tmp/wall.png".into());
+        cfg.wallpaper.color = None;
+        cfg.wallpaper.backend = Some(WallpaperBackend::Hyprpaper);
+        cfg.wallpaper.transition = Some(WallpaperTransition {
+            kind: "fade".into(),
+            duration: 1.0,
+            fps: 60,
+            bezier: None,
+        });
+        let err = validate_semantic(&cfg).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ValidationError::Semantic(SemanticError::WallpaperTransitionRequiresSwww)
+            ),
+            "expected WallpaperTransitionRequiresSwww, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn transition_without_backend_returns_error() {
+        let mut cfg = valid_config();
+        cfg.wallpaper.mode = WallpaperMode::Image;
+        cfg.wallpaper.path = Some("/tmp/wall.png".into());
+        cfg.wallpaper.color = None;
+        cfg.wallpaper.backend = None; // defaults to hyprpaper
+        cfg.wallpaper.transition = Some(WallpaperTransition {
+            kind: "fade".into(),
+            duration: 1.0,
+            fps: 60,
+            bezier: None,
+        });
+        let err = validate_semantic(&cfg).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ValidationError::Semantic(SemanticError::WallpaperTransitionRequiresSwww)
+            ),
+            "expected WallpaperTransitionRequiresSwww, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn backend_on_non_image_mode_returns_error() {
+        let mut cfg = valid_config();
+        cfg.wallpaper.mode = WallpaperMode::Solid;
+        cfg.wallpaper.color = Some("#000000".into());
+        cfg.wallpaper.backend = Some(WallpaperBackend::Swww);
+        let err = validate_semantic(&cfg).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ValidationError::Semantic(SemanticError::WallpaperBackendOnlyValidForImageMode)
+            ),
+            "expected WallpaperBackendOnlyValidForImageMode, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn image_mode_with_pool_and_default_passes() {
+        let mut cfg = valid_config();
+        cfg.wallpaper.mode = WallpaperMode::Image;
+        cfg.wallpaper.path = None;
+        cfg.wallpaper.pool = Some("wallpapers".into());
+        cfg.wallpaper.default = Some("default.png".into());
+        cfg.wallpaper.color = None;
+        validate_semantic(&cfg).unwrap();
+    }
+
+    #[test]
+    fn image_mode_with_swww_and_transition_passes() {
+        let mut cfg = valid_config();
+        cfg.wallpaper.mode = WallpaperMode::Image;
+        cfg.wallpaper.path = Some("/tmp/wall.png".into());
+        cfg.wallpaper.color = None;
+        cfg.wallpaper.backend = Some(WallpaperBackend::Swww);
+        cfg.wallpaper.transition = Some(WallpaperTransition {
+            kind: "fade".into(),
+            duration: 1.0,
+            fps: 60,
+            bezier: None,
+        });
+        validate_semantic(&cfg).unwrap();
     }
 
     // --- happy path ---

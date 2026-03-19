@@ -35,6 +35,19 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use error::CacheError;
+use serde::{Deserialize, Serialize};
+
+/// Wallpaper override state for pool-based themes.
+///
+/// Written by `arqemo wallpaper set <name>`.
+/// Cleared by `arqemo wallpaper reset` or when theme changes via `apply`.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct WallpaperOverride {
+    /// Theme name this override belongs to.
+    pub theme: String,
+    /// Current wallpaper filename within pool.
+    pub current: String,
+}
 
 /// Returns the path to the arqemo cache directory (`~/.cache/arqemo/`).
 ///

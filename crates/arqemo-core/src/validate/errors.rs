@@ -122,4 +122,28 @@ pub enum SemanticError {
         /// The actual value found.
         value: String,
     },
+
+    /// `path` and `pool` both present — mutually exclusive.
+    #[error("[wallpaper] path and pool are mutually exclusive")]
+    WallpaperPathAndPoolMutuallyExclusive,
+
+    /// `pool` present without `default`.
+    #[error("[wallpaper] pool requires default")]
+    WallpaperPoolRequiresDefault,
+
+    /// `default` present without `pool`.
+    #[error("[wallpaper] default requires pool")]
+    WallpaperDefaultRequiresPool,
+
+    /// `mode = "image"` but neither `path` nor `pool` provided.
+    #[error("[wallpaper] mode = \"image\" requires path or pool")]
+    WallpaperImageRequiresPathOrPool,
+
+    /// `transition` present but `backend` is not `swww`.
+    #[error("[wallpaper] transition requires backend = \"swww\"")]
+    WallpaperTransitionRequiresSwww,
+
+    /// `backend` explicitly set on non-image mode.
+    #[error("[wallpaper] backend is only valid for mode = \"image\"")]
+    WallpaperBackendOnlyValidForImageMode,
 }

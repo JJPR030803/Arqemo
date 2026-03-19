@@ -135,6 +135,43 @@ pub fn validate_theme(theme: &str,info:bool) -> Result<()> {
     Ok(())
 }
 
+/// Set a specific wallpaper from the pool.
+///
+/// # Errors
+///
+/// Returns an error if the wallpaper cannot be set.
+pub fn wallpaper_set(name: &str) -> Result<()> {
+    let _ = name;
+    todo!("wallpaper set — next milestone")
+}
+
+/// Cycle to the next wallpaper in the pool.
+///
+/// # Errors
+///
+/// Returns an error if the wallpaper cannot be cycled.
+pub fn wallpaper_next() -> Result<()> {
+    todo!("wallpaper next — next milestone")
+}
+
+/// Pick a random wallpaper from the pool.
+///
+/// # Errors
+///
+/// Returns an error if the wallpaper cannot be set.
+pub fn wallpaper_random() -> Result<()> {
+    todo!("wallpaper random — next milestone")
+}
+
+/// Clear wallpaper override and revert to default.
+///
+/// # Errors
+///
+/// Returns an error if the reset fails.
+pub fn wallpaper_reset() -> Result<()> {
+    todo!("wallpaper reset — next milestone")
+}
+
 #[test]
 fn test_list() -> Result<()> {
     list_themes(true)

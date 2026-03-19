@@ -36,14 +36,29 @@ pub fn check(config: &ThemeConfig) -> Result<PreflightResult, ApplyError> {
 
 /// Verify Hyprland is running by checking environment and socket.
 fn check_hyprland_running() -> Result<(), ApplyError> {
+    let _socket = hyprland_socket_path()?;
+    Ok(())
+}
+
+/// Resolve the Hyprland socket path.
+///
+/// Hyprland 0.46+ uses `$XDG_RUNTIME_DIR/hypr/`, older versions used `/tmp/hypr/`.
+fn hyprland_socket_path() -> Result<PathBuf, ApplyError> {
     let sig = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")
         .map_err(|_| ApplyError::HyprlandNotRunning)?;
 
-    let socket_path = PathBuf::from(format!("/tmp/hypr/{sig}/.socket.sock"));
-    if !socket_path.exists() {
-        return Err(ApplyError::HyprlandSocketMissing(socket_path));
+    // Hyprland 0.46+ uses XDG_RUNTIME_DIR, older versions used /tmp/hypr
+    let base = std::env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/tmp"));
+
+    let socket = base.join("hypr").join(&sig).join(".socket.sock");
+
+    if !socket.exists() {
+        return Err(ApplyError::HyprlandSocketMissing(socket));
     }
-    Ok(())
+
+    Ok(socket)
 }
 
 /// Check that required tools are available in PATH.
@@ -52,7 +67,7 @@ fn check_tools(config: &ThemeConfig) -> Vec<String> {
     let mut warnings = Vec::new();
 
     // Check wallpaper tool based on mode
-    if config.wallpaper.mode == "image"
+    if config.wallpaper.mode == crate::schema::WallpaperMode::Image
         && !tool_exists("swww")
         && !tool_exists("swaybg")
     {

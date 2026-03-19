@@ -74,6 +74,7 @@ fn validate_parsing(path: &Path) -> Result<ThemeConfig, ValidationError> {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
+    use crate::schema::WallpaperMode;
     use std::io::Write;
 
     fn minimal_theme_toml() -> &'static str {
@@ -203,6 +204,6 @@ color = "#0a0a0a"
         let config = validate_file(f.path()).unwrap();
         assert_eq!(config.meta.name, "test");
         assert_eq!(config.colors.accent, "#ffffff");
-        assert_eq!(config.wallpaper.mode, "solid");
+        assert_eq!(config.wallpaper.mode, WallpaperMode::Solid);
     }
 }
